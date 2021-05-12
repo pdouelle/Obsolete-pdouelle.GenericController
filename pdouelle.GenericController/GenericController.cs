@@ -11,6 +11,7 @@ using pdouelle.GenericMediatR.Models.Generics.Models.Commands.Create;
 using pdouelle.GenericMediatR.Models.Generics.Models.Commands.Delete;
 using pdouelle.GenericMediatR.Models.Generics.Models.Commands.Patch;
 using pdouelle.GenericMediatR.Models.Generics.Models.Commands.Save;
+using pdouelle.GenericMediatR.Models.Generics.Models.Commands.Update;
 using pdouelle.GenericMediatR.Models.Generics.Models.Queries.IdQuery;
 using pdouelle.GenericMediatR.Models.Generics.Models.Queries.ListQuery;
 
@@ -69,6 +70,8 @@ namespace pdouelle.GenericController
                 Request = request
             });
 
+            if (response == null) return NotFound();
+
             var mappedResponse = Mapper.Map<TDto>(response);
 
             return Ok(mappedResponse);
@@ -82,9 +85,7 @@ namespace pdouelle.GenericController
         [HttpPost]
         public virtual async Task<IActionResult> Create([FromBody] TCreate request)
         {
-            var entity = Mapper.Map<TEntity>(request);
-
-            await Mediator.Send(new CreateCommandModel<TEntity, TCreate>
+            TEntity entity = await Mediator.Send(new CreateCommandModel<TEntity, TCreate>
             {
                 Request = request
             });
@@ -112,10 +113,13 @@ namespace pdouelle.GenericController
                 Request = new TQueryById {Id = id}
             });
 
-            if (entity == null)
-                return NotFound();
+            if (entity == null) return NotFound();
 
-            Mapper.Map(request, entity);
+            await Mediator.Send(new UpdateCommandModel<TEntity, TUpdate>
+            {
+                Entity = entity,
+                Request = request
+            });
 
             await Mediator.Send(new SaveCommandModel<TEntity>());
 
@@ -140,8 +144,7 @@ namespace pdouelle.GenericController
                 Request = new TQueryById {Id = id}
             });
 
-            if (entity == null)
-                return NotFound();
+            if (entity == null) return NotFound();
 
             var request = new TPatch();
             patchDocument.ApplyTo(request);
@@ -154,7 +157,7 @@ namespace pdouelle.GenericController
 
             await Mediator.Send(new SaveCommandModel<TEntity>());
 
-            var mappedResponse = Mapper.Map<TDto>(entity);
+            var mappedResponse = Mapper.Map<TDto>(response);
 
             return Ok(mappedResponse);
         }
@@ -175,8 +178,7 @@ namespace pdouelle.GenericController
                 Request = new TQueryById {Id = id}
             });
 
-            if (entity == null)
-                return NotFound();
+            if (entity == null) return NotFound();
 
             await Mediator.Send(new DeleteCommandModel<TEntity, TDelete>
             {
